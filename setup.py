@@ -29,5 +29,14 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-    keywords=["python", "unb", "unbelievaboat", "api", "wrapper", "async", "asyncio"],
+    keywords=[
+        "python",
+        "7tv",
+        "eventapi",
+        "7tvapi",
+        "7tveventapi",
+        "async",
+        "asyncio",
+        "wrapper",
+    ],
 )
