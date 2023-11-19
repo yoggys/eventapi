@@ -7,13 +7,13 @@ long_description = (cwd / "README.md").read_text()
 
 setup(
     name="eventapi",
-    version="1.0.1",
+    version="1.0.2",
     author="yoggys",
     author_email="yoggies@yoggies.dev",
     description="Wrapper for 7TV EventAPI.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yoggys/7tv_eventapi_wrapper",
+    url="https://github.com/yoggys/eventapi",
     packages=find_packages(),
     install_requires=[
         "websockets ~= 12.0",
