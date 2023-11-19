@@ -7,7 +7,7 @@ long_description = (cwd / "README.md").read_text()
 
 setup(
     name="eventapi",
-    version="1.0.0",
+    version="1.0.1",
     author="yoggys",
     author_email="yoggies@yoggies.dev",
     description="Wrapper for 7TV EventAPI.",
