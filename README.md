@@ -70,7 +70,7 @@ asyncio.run(main())
 
 > Discord.py / Pycord example:
 
-<img src="assets/example_dc.png" alt="Discord Bot example" height="450px">
+<img src="https://github.com/yoggys/eventapi/blob/master/assets/example_dc.png" alt="Discord Bot example" height="450px">
 
 ```python
 from typing import Any
