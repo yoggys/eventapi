@@ -1,4 +1,3 @@
-import json
 from typing import Any, Optional, Self, Union
 
 
@@ -93,7 +92,7 @@ class ChangeField:
         self.key: str = data.get("key")
         self.index: int = data.get("index")
         self.nested: bool = data.get("nested")
-        self.old_value: Optional[dict[str, Any]] = data.get("nested")
+        self.old_value: Optional[dict[str, Any]] = data.get("old_value")
 
         value: Optional[Union[list[Self], dict[str, Any]]] = data.get("value")
         self.value: Optional[Union[list[Self], dict[str, Any]]] = (

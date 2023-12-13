@@ -22,7 +22,7 @@ pip install eventapi
 
 ## Usage
 
-Here's an simple example of how to use wrapper:
+> Here's a simple example of how to use wrapper:
 
 ```python
 import asyncio
@@ -65,6 +65,105 @@ async def main():
 
 asyncio.run(main())
 ```
+
+<hr>
+
+> Discord.py / Pycord example:
+
+<img src="assets/example_dc.png" alt="Discord Bot example" height="450px">
+
+```python
+from typing import Any
+
+import aiohttp
+import discord
+
+from eventapi.EventApi import EventApi
+from eventapi.WebSocket import (
+    Dispatch,
+    EventType,
+    ResponseTypes,
+    SubscriptionCondition,
+    SubscriptionData,
+)
+
+
+async def format_url(data: dict[str, Any]) -> str:
+    base_url = "https://cdn.7tv.app/emote/{}/4x".format(data.get("id"))
+    if "animated" not in data:
+        async with aiohttp.ClientSession() as cs:
+            async with cs.get(base_url + ".gif") as r:
+                if r.status == 200:
+                    base_url += ".gif"
+    else:
+        if data.get("animated"):
+            base_url += ".gif"
+    return base_url
+
+
+async def callback(data: ResponseTypes) -> None:
+    if not isinstance(data, Dispatch):
+        return
+    if data.type != EventType.EMOTE_SET_UPDATE:
+        return
+
+    channel = client.get_channel(927288026000945162)  # your channel id
+    changes: list[discord.Embed] = []
+
+    def add_change(description: str, color: discord.Color, image_url: str):
+        changes.append(
+            discord.Embed(description=description, color=color).set_image(url=image_url)
+        )
+
+    if data.body.pulled:
+        for pulled in data.body.pulled:
+            add_change(
+                "**Deleted emote:** `{}`".format(pulled.old_value.get("name")),
+                discord.Color.brand_red(),
+                await format_url(pulled.old_value),
+            )
+    if data.body.pushed:
+        for pushed in data.body.pushed:
+            add_change(
+                "**Added emote:** `{}`".format(pushed.value.get("data").get("name")),
+                discord.Color.brand_green(),
+                await format_url(pushed.value.get("data")),
+            )
+    if data.body.updated:
+        for updated in data.body.updated:
+            add_change(
+                "**Edited emote:** `{}` » `{}`".format(
+                    updated.old_value.get("name"), updated.value.get("name")
+                ),
+                discord.Color.yellow(),
+                await format_url(updated.value),
+            )
+
+    if len(changes) > 0:
+        await channel.send(embeds=changes)
+
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+client.eventapi = EventApi(callback=callback)
+
+
+@client.event
+async def on_ready():
+    await client.eventapi.connect()
+    condition = SubscriptionCondition(
+        object_id="6433b7cec07d26f890dd2d01"
+    )  # your emote-set id
+    subscription = SubscriptionData(
+        subscription_type=EventType.EMOTE_SET_ALL, condition=condition
+    )
+    await client.eventapi.subscribe(subscription_data=subscription)
+
+
+client.run("your token here")  # your token
+```
+
+
 
 ## Contributing
 
