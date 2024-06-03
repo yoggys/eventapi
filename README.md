@@ -125,7 +125,7 @@ async def callback(data: ResponseTypes) -> None:
     if data.body.pushed:
         for pushed in data.body.pushed:
             add_change(
-                "**Added emote:** `{}`".format(pushed.value.get("data").get("name")),
+                "**Added emote:** `{}`".format(pushed.value.get("name")),
                 discord.Color.brand_green(),
                 await format_url(pushed.value.get("data")),
             )
