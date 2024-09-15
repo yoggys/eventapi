@@ -1,4 +1,6 @@
-from typing import Any, Optional, Self, Union
+from typing import Any, Dict, List, Optional, Union
+
+from typing_extensions import Self
 
 
 class DotDict(dict):
@@ -66,7 +68,7 @@ class EventType(DotDict):
 
 
 class UserConnection:
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: Dict[str, Any]):
         self.id: str = data.get("id")
         self.username: str = data.get("username")
         self.display_name: str = data.get("display_name")
@@ -75,54 +77,100 @@ class UserConnection:
         self.emote_capacity: int = data.get("emote_capacity")
         self.emote_set_id: str = data.get("emote_set_id")
 
+    def __str__(self) -> str:
+        return "<UserConnection id={} username={} display_name={} platform={} linked_at={} emote_capacity={} emote_set_id={}>".format(
+            self.id,
+            self.username,
+            self.display_name,
+            self.platform,
+            self.linked_at,
+            self.emote_capacity,
+            self.emote_set_id,
+        )
+
 
 class User:
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: Dict[str, Any]):
         self.id: str = data.get("id")
         self.username: str = data.get("username")
         self.display_name: str = data.get("display_name")
         self.avatar_url: str = data.get("avatar_url")
-        self.style: Optional[dict[str, Any]] = data.get("style")
-        self.roles: Optional[list[str]] = data.get("roles")
-        self.connections: Optional[list[UserConnection]] = data.get("connections")
+        self.style: Optional[Dict[str, Any]] = data.get("style")
+        self.roles: Optional[List[str]] = data.get("roles")
+        self.connections: Optional[List[UserConnection]] = data.get("connections")
+
+    def __str__(self) -> str:
+        return "<User id={} username={} display_name={} avatar_url={} style={} roles={} connections={}>".format(
+            self.id,
+            self.username,
+            self.display_name,
+            self.avatar_url,
+            self.style,
+            self.roles,
+            [str(connection) for connection in self.connections]
+            if self.connections
+            else [],
+        )
 
 
 class ChangeField:
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.key: str = data.get("key")
         self.index: int = data.get("index")
         self.nested: bool = data.get("nested")
-        self.old_value: Optional[dict[str, Any]] = data.get("old_value")
+        self.old_value: Optional[Dict[str, Any]] = data.get("old_value")
 
-        value: Optional[Union[list[Self], dict[str, Any]]] = data.get("value")
-        self.value: Optional[Union[list[Self], dict[str, Any]]] = (
+        value: Optional[Union[List[Self], Dict[str, Any]]] = data.get("value")
+        self.value: Optional[Union[List[Self], Dict[str, Any]]] = (
             value
             if not value or isinstance(value, dict)
             else [ChangeField(c) for c in value]
         )
 
+    def __str__(self) -> str:
+        return "<ChangeField key={} index={} nested={} value={} old_value={}>".format(
+            self.key,
+            self.index,
+            self.nested,
+            self.value,
+            self.old_value,
+        )
+
 
 class ChangeMap:
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.id: str = data.get("id")
         self.kind: int = data.get("kind")
         self.contextual: Optional[bool] = data.get("contextual")
         self.actor: User = User(data.get("actor"))
-        self.added: Optional[list[ChangeField]] = [
+        self.added: Optional[List[ChangeField]] = [
             ChangeField(d) for d in data.get("added", [])
         ]
-        self.updated: Optional[list[ChangeField]] = [
+        self.updated: Optional[List[ChangeField]] = [
             ChangeField(d) for d in data.get("updated", [])
         ]
-        self.removed: Optional[list[ChangeField]] = [
+        self.removed: Optional[List[ChangeField]] = [
             ChangeField(d) for d in data.get("removed", [])
         ]
-        self.pushed: Optional[list[ChangeField]] = [
+        self.pushed: Optional[List[ChangeField]] = [
             ChangeField(d) for d in data.get("pushed", [])
         ]
-        self.pulled: Optional[list[ChangeField]] = [
+        self.pulled: Optional[List[ChangeField]] = [
             ChangeField(d) for d in data.get("pulled", [])
         ]
+
+    def __str__(self) -> str:
+        return "<ChangeMap id={} kind={} contextual={} actor={} added={} updated={} removed={} pushed={} pulled={}>".format(
+            self.id,
+            self.kind,
+            self.contextual,
+            self.actor,
+            [str(added) for added in self.added] if self.added else [],
+            [str(updated) for updated in self.updated] if self.updated else [],
+            [str(removed) for removed in self.removed] if self.removed else [],
+            [str(pushed) for pushed in self.pushed] if self.pushed else [],
+            [str(pulled) for pulled in self.pulled] if self.pulled else [],
+        )
 
 
 class SubscriptionCondition:
@@ -140,6 +188,9 @@ class SubscriptionCondition:
         if host_id:
             self.data["host_id"] = host_id
 
+    def __str__(self) -> str:
+        return f"<SubscriptionCondition data={self.data}>"
+
 
 class SubscriptionData:
     def __init__(
@@ -152,58 +203,91 @@ class SubscriptionData:
             "condition": condition.data if condition else None,
         }
 
+    def __str__(self) -> str:
+        return f"<SubscriptionData data={self.data}>"
+
 
 class WebsocketMessage:
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.raw_data = data
+
+    def __str__(self) -> str:
+        return f"<WebsocketMessage>"
 
 
 class Dispatch(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.type: EventType = data.get("type")
         self.body: ChangeMap = ChangeMap(data.get("body"))
         super().__init__(data)
 
+    def __str__(self) -> str:
+        return f"<Dispatch type={self.type} body={self.body}>"
+
 
 class Hello(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.session_id: str = data.get("session_id")
         self.heartbeat_interval: int = data.get("heartbeat_interval")
         self.subscription_limit: int = data.get("subscription_limit")
         super().__init__(data)
 
+    def __str__(self) -> str:
+        return (
+            "<Hello session_id={} heartbeat_interval={} subscription_limit={}>".format(
+                self.session_id,
+                self.heartbeat_interval,
+                self.subscription_limit,
+            )
+        )
+
 
 class Heartbeat(WebsocketMessage):
-    def __init__(self, data: dict[str, int]) -> None:
+    def __init__(self, data: Dict[str, int]) -> None:
         self.count: int = data.get("count")
         super().__init__(data)
 
+    def __str__(self) -> str:
+        return f"<Heartbeat count={self.count}>"
+
 
 class Ack(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.command: str = data.get("command")
         self.data: Any = data.get("data")
         super().__init__(data)
 
+    def __str__(self) -> str:
+        return f"<Ack command={self.command} data={self.data}>"
+
 
 class Reconnect(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         super().__init__(data)
+
+    def __str__(self) -> str:
+        return f"<Reconnect>"
 
 
 class Error(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.message: str = data.get("message")
-        self.fields: dict[str, str] = data.get("fields")
+        self.fields: Dict[str, str] = data.get("fields")
         super().__init__(data)
+
+    def __str__(self) -> str:
+        return f"<Error message={self.message} fields={self.fields}>"
 
 
 class EndOfStream(WebsocketMessage):
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.code: ServerCloseCodes = data.get("code")
         self.should_reconnect: bool = self.code in ServerCloseCodes.RECONNECT_CODES
         self.message: Optional[str] = data.get("message")
         super().__init__(data)
+
+    def __str__(self) -> str:
+        return f"<EndOfStream code={self.code} should_reconnect={self.should_reconnect} message={self.message}>"
 
 
 ResponseTypes = Union[Dispatch, Hello, Heartbeat, Ack, Reconnect, Error, EndOfStream]
