@@ -1,6 +1,7 @@
 import asyncio
 import atexit
 import json
+import logging
 import signal
 import socket
 from typing import Any, Callable, Coroutine, Dict, List, Optional
@@ -52,15 +53,19 @@ class EventApi:
         await self.connect()
         return self
 
-    async def __aexit__(self) -> None:
+    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
         await self.close()
 
     def __aiter__(self):
         if not self.closed:
             self.queue = asyncio.Queue()
             return self
+        else:
+            raise StopAsyncIteration
 
     async def __anext__(self):
+        if self.queue is None:
+            raise StopAsyncIteration
         return await self.queue.get()
 
     def __str__(self) -> str:
@@ -72,7 +77,11 @@ class EventApi:
 
     def _close_sync(self) -> None:
         if not self.closed:
-            asyncio.run(self.close())
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.close())
+            else:
+                asyncio.run(self.close())
 
     def _handle_exit(self, signum, frame) -> None:
         if not self.closed:
@@ -90,9 +99,14 @@ class EventApi:
         await self.connect()
 
     async def close(self) -> None:
-        self.handler.cancel()
-        self.handler = None
-        if not self.ws.closed:
+        if self.handler:
+            try:
+                self.handler.cancel()
+                await self.handler
+            except asyncio.CancelledError:
+                pass
+            self.handler = None
+        if self.ws and not self.closed:
             await self.ws.close()
         self.ws = None
 
@@ -102,9 +116,11 @@ class EventApi:
                 message = await self.ws.recv()
                 if isinstance(message, bytes):
                     message = message.decode("utf-8")
+                logging.debug(f"Received message: {message}")
                 asyncio.create_task(self.on_message(message))
-        except:
-            asyncio.create_task(self.reconnect())
+        except Exception as e:
+            logging.error(f"Error in message handler: {e}")
+            await self.reconnect()
 
     async def on_message(self, message: str) -> None:
         message = json.loads(message)
@@ -112,7 +128,10 @@ class EventApi:
         if self.queue:
             await self.queue.put(parsed_message)
         if self.callback and parsed_message:
-            asyncio.create_task(self.callback(parsed_message))
+            try:
+                await self.callback(parsed_message)
+            except Exception as e:
+                logging.error(f"Error in callback: {e}")
 
     async def parse_message(self, message: Dict[str, Any]) -> Optional[ResponseTypes]:
         message_data = message.get("d")
@@ -153,19 +172,23 @@ class EventApi:
             return parsed_message
 
     async def subscribe(self, subscription_data: SubscriptionData) -> None:
-        if not self.ws or self.ws.closed:
+        if self.closed:
             raise NoActiveConnectionException()
         if len(self.subscriptions) + 1 > self.subscription_limit:
             raise SubscriptionException(limit=self.subscription_limit)
         if subscription_data not in self.subscriptions:
             self.subscriptions.append(subscription_data)
-        await self.ws.send(json.dumps({"op": 35, "d": subscription_data.data}))
+            await self.ws.send(json.dumps({"op": 35, "d": subscription_data.data}))
+        else:
+            logging.warning("Attempted to subscribe to already existing subscription.")
 
     async def unsubscribe(self, subscription_data: SubscriptionData) -> None:
-        if not self.ws or self.ws.closed:
+        if self.closed:
             raise NoActiveConnectionException()
         if len(self.subscriptions) == 0:
             raise NoActiveSubscriptionsException()
         if subscription_data in self.subscriptions:
             self.subscriptions.remove(subscription_data)
-        await self.ws.send(json.dumps({"op": 36, "d": subscription_data.data}))
+            await self.ws.send(json.dumps({"op": 36, "d": subscription_data.data}))
+        else:
+            logging.warning("Attempted to unsubscribe from non-existent subscription.")
