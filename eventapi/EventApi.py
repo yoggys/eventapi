@@ -1,9 +1,12 @@
 import asyncio
+import atexit
 import json
+import signal
 import socket
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 import websockets
+from typing_extensions import Self
 
 from eventapi.Exceptions import (
     ConnectionException,
@@ -35,11 +38,45 @@ class EventApi:
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.handler: Optional[asyncio.Task] = None
 
-        self.previous_session_id: Optional[str] = None
+        self.queue: Optional[asyncio.Queue] = None
         self.session_id: Optional[str] = None
-        self.subscription_limit: int = 100
-        self.subscriptions: list[SubscriptionData] = []
+        self.subscription_limit: int = 500
+        self.subscriptions: List[SubscriptionData] = []
         self.callback = callback
+
+        atexit.register(self._close_sync)
+        signal.signal(signal.SIGINT, self._handle_exit)
+        signal.signal(signal.SIGTERM, self._handle_exit)
+
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(self) -> None:
+        await self.close()
+
+    def __aiter__(self):
+        if not self.closed:
+            self.queue = asyncio.Queue()
+            return self
+
+    async def __anext__(self):
+        return await self.queue.get()
+
+    def __str__(self) -> str:
+        return f"<EventApi session_id='{self.session_id}' subscription_limit={self.subscription_limit} closed={self.closed}>"
+
+    @property
+    def closed(self) -> bool:
+        return self.ws is None or self.ws.closed
+
+    def _close_sync(self) -> None:
+        if not self.closed:
+            asyncio.run(self.close())
+
+    def _handle_exit(self, signum, frame) -> None:
+        if not self.closed:
+            asyncio.run(self.close())
 
     async def connect(self) -> None:
         try:
@@ -49,12 +86,15 @@ class EventApi:
             raise ConnectionException()
 
     async def reconnect(self) -> None:
+        await self.close()
+        await self.connect()
+
+    async def close(self) -> None:
         self.handler.cancel()
         self.handler = None
         if not self.ws.closed:
             await self.ws.close()
         self.ws = None
-        await self.connect()
 
     async def message_handler(self) -> None:
         try:
@@ -63,16 +103,18 @@ class EventApi:
                 if isinstance(message, bytes):
                     message = message.decode("utf-8")
                 asyncio.create_task(self.on_message(message))
-        except websockets.exceptions.ConnectionClosed:
+        except:
             asyncio.create_task(self.reconnect())
 
     async def on_message(self, message: str) -> None:
         message = json.loads(message)
         parsed_message = await self.parse_message(message)
+        if self.queue:
+            await self.queue.put(parsed_message)
         if self.callback and parsed_message:
             asyncio.create_task(self.callback(parsed_message))
 
-    async def parse_message(self, message: dict[str, Any]) -> Optional[ResponseTypes]:
+    async def parse_message(self, message: Dict[str, Any]) -> Optional[ResponseTypes]:
         message_data = message.get("d")
         message_code = message.get("op")
 

@@ -7,7 +7,7 @@ long_description = (cwd / "README.md").read_text()
 
 setup(
     name="eventapi",
-    version="1.0.4",
+    version="1.1.0",
     author="yoggys",
     author_email="yoggies@yoggies.dev",
     description="Wrapper for 7TV EventAPI.",
@@ -17,6 +17,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "websockets ~= 12.0",
+        "typing_extensions ~= 4.12.2",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

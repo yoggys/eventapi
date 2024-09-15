@@ -29,7 +29,6 @@ import asyncio
 
 from eventapi.EventApi import EventApi
 from eventapi.WebSocket import (
-    Dispatch,
     EventType,
     ResponseTypes,
     SubscriptionCondition,
@@ -38,11 +37,7 @@ from eventapi.WebSocket import (
 
 
 async def callback(data: ResponseTypes):
-    if isinstance(data, Dispatch):
-        print(f"Event data type: {data.type}")
-        print(f"Event data body: {data.body}")
-    else:
-        print(f"Raw event data: {data.raw_data}")
+    print("Message from callback: ", data)
 
 
 async def main():
@@ -51,6 +46,7 @@ async def main():
 
     # connect to websocket
     await app.connect()
+    print("Connected")
 
     # create subscription with specified condition
     condition = SubscriptionCondition(object_id="6433b7cec07d26f890dd2d01")
@@ -59,7 +55,11 @@ async def main():
     )
     await app.subscribe(subscription_data=subscription)
 
-    # run forever
+    # you can also use async iterator without specifying callback
+    async for message in app:
+        print("Message from async iterator: ", message)
+
+    # run forever if we are not using async for
     await asyncio.Future()
 
 
@@ -73,7 +73,7 @@ asyncio.run(main())
 <img src="https://github.com/yoggys/eventapi/blob/master/assets/example_dc.png" alt="Discord Bot example" height="450px">
 
 ```python
-from typing import Any
+from typing import Any, Dict, List
 
 import aiohttp
 import discord
@@ -88,7 +88,7 @@ from eventapi.WebSocket import (
 )
 
 
-async def format_url(data: dict[str, Any]) -> str:
+async def format_url(data: Dict[str, Any]) -> str:
     base_url = "https://cdn.7tv.app/emote/{}/4x".format(data.get("id"))
     if "animated" not in data:
         async with aiohttp.ClientSession() as cs:
@@ -108,7 +108,7 @@ async def callback(data: ResponseTypes) -> None:
         return
 
     channel = client.get_channel(927288026000945162)  # your channel id
-    changes: list[discord.Embed] = []
+    changes: List[discord.Embed] = []
 
     def add_change(description: str, color: discord.Color, image_url: str):
         changes.append(
@@ -148,7 +148,7 @@ client = discord.Client(intents=intents)
 client.eventapi = EventApi(callback=callback)
 
 
-@client.event
+@client.listen("on_ready", once=True)
 async def on_ready():
     await client.eventapi.connect()
     condition = SubscriptionCondition(
