@@ -156,11 +156,14 @@ class EventApi:
             return Reconnect(message_data)
         elif message_code == WebsocketMessageType.ACK:
             parsed_message = Ack(message_data)
-            if parsed_message.command == "RESUME" and not parsed_message.data.get(
-                "success"
-            ):
-                for s in self.subscriptions:
-                    asyncio.create_task(self.subscribe(s))
+            if parsed_message.command == "RESUME":
+                status = parsed_message.data.get(
+                    "success", 0
+                )
+                logging.info(f"RESUMED session {self.session_id} with status {status}")
+                if not status:
+                    for s in self.subscriptions:
+                        await self.ws.send(json.dumps({"op": 35, "d": s.data}))
             return parsed_message
         elif message_code == WebsocketMessageType.ERROR:
             return Error(message_data)
