@@ -84,8 +84,7 @@ class EventApi:
                 asyncio.run(self.close())
 
     def _handle_exit(self, signum, frame) -> None:
-        if not self.closed:
-            asyncio.run(self.close())
+        self._close_sync()
 
     async def connect(self) -> None:
         try:
