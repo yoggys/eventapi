@@ -17,7 +17,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "websockets >= 12,< 16",
-        "typing_extensions >= 4.12.2,< 4.15.0",
+        "typing_extensions >= 4.12.2,< 4.16.0",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
