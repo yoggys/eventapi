@@ -16,7 +16,7 @@ setup(
     url="https://github.com/yoggys/eventapi",
     packages=find_packages(),
     install_requires=[
-        "websockets >= 12,< 16",
+        "websockets >= 12,< 17",
         "typing_extensions >= 4.12.2,< 4.16.0",
     ],
     classifiers=[
